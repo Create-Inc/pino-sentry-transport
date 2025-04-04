@@ -1,16 +1,36 @@
 import type { Transform } from "node:stream";
 import {
+  type Scope,
   captureException,
   captureMessage,
   getClient,
   init,
 } from "@sentry/node";
-import { afterEach, expect, test, vi } from "vitest";
-import pinoSentryTransport from "../index";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import pinoSentryTransport, { PINO_SENTRY_KEY } from "../index";
+
+let scope: Scope;
+
+function setScope(newScope) {
+  scope = newScope;
+}
+function getScope() {
+  return scope;
+}
+
+beforeEach(() => {
+  setScope({
+    setLevel: vi.fn(),
+    setExtra: vi.fn(),
+    setTag: vi.fn(),
+    setUser: vi.fn(),
+    setContext: vi.fn(),
+  });
+});
 
 vi.mock("@sentry/node", () => {
-  const captureException = vi.fn();
-  const captureMessage = vi.fn();
+  const captureException = vi.fn((err, callback) => callback(getScope()));
+  const captureMessage = vi.fn((msg, callback) => callback(getScope()));
   const init = vi.fn();
   const getClient = vi.fn(() => undefined);
   return { captureException, captureMessage, init, getClient };
@@ -139,6 +159,65 @@ test("should send Errors to Sentry", async () => {
     transform.on("end", () => {
       expect(captureMessage).not.toHaveBeenCalled();
       expect(captureException).toHaveBeenCalledOnce();
+      resolve();
+    });
+  });
+});
+
+test("should add existing scope data from key to Sentry", async () => {
+  const transform = (await pinoSentryTransport({
+    sentry: { dsn: "fake dsn" },
+    minLevel: 50,
+  })) as Transform;
+
+  const logs = [
+    {
+      level: 50,
+      time: 1617955768092,
+      pid: 2942,
+      hostname: "MacBook-Pro.local",
+      err: {
+        message: "error message",
+        stack: "error stack",
+      },
+      msg: "hello world",
+      [PINO_SENTRY_KEY]: {
+        extra: {
+          key: "value",
+        },
+        tags: {
+          tag: "value",
+        },
+        user: {
+          id: "user-id",
+          email: "user-email",
+        },
+        contexts: {
+          customContext: {
+            key: "value",
+          },
+        },
+      },
+    },
+  ];
+
+  const logSerialized = logs.map((log) => JSON.stringify(log)).join("\n");
+
+  transform.write(logSerialized);
+  transform.end();
+
+  await new Promise<void>((resolve) => {
+    transform.on("end", () => {
+      expect(captureException).toHaveBeenCalledOnce();
+      expect(scope.setTag).toHaveBeenCalledWith("tag", "value");
+      expect(scope.setExtra).toHaveBeenCalledWith("key", "value");
+      expect(scope.setUser).toHaveBeenCalledWith({
+        id: "user-id",
+        email: "user-email",
+      });
+      expect(scope.setContext).toHaveBeenCalledWith("customContext", {
+        key: "value",
+      });
       resolve();
     });
   });
