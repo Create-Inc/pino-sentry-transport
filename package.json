@@ -28,6 +28,7 @@
   },
   "scripts": {
     "build": "tsup",
+    "prepack": "npm run build",
     "lint": "tsc",
     "fix": "biome check --fix",
     "check": "biome check",
