@@ -30,13 +30,19 @@ const logger = pino({
         options: {
             sentry: {
                 dsn: "https://<key>:<secret>@sentry.io/<project>",
-                // additional options for sentry
+                // additional options for Sentry
             },
-            withLogRecord: true, // default false - send the entire log record to sentry as a context.(FYI if its more then 8Kb Sentry will throw an error)
-            tags: ['level'], // sentry tags to add to the event, uses lodash.get to get the value from the log record
-            context: ['hostname'], // sentry context to add to the event, uses lodash.get to get the value from the log record,
-            minLevel: 40, // which level to send to sentry
-            expectPinoConfig: true, // default false - pass true if pino configured with custom messageKey or errorKey see below
+            // default false - send the entire log record to Sentry as a context.
+            // FYI: if it's more than 8Kb, Sentry will throw an error
+            withLogRecord: true,
+            // sentry tags to add to the event, uses `lodash.get` to get the value from the log record
+            tags: ['level'],
+            // sentry context to add to the event, uses `lodash.get` to get the value from the log record
+            context: ['hostname'],
+            // which level to send to Sentry
+            minLevel: 40,
+            // default false - pass true if pino is configured with custom messageKey or errorKey, see below
+            expectPinoConfig: true,
         }
     },
 });
@@ -48,7 +54,7 @@ const logger = pino({
 - **`withLogRecord`**: When set to `true`, sends the entire log record as context to Sentry. Be cautious of log records larger than 8KB, as Sentry will throw an error.
 - **`tags`**: An array specifying which fields from the log record should be added as tags in Sentry. Uses `lodash.get` to extract values.
 - **`context`**: An array specifying which fields from the log record should be added as context in Sentry. Also uses `lodash.get` for value extraction.
-- **`minLevel`**: The minimum log level required for a message to be sent to Sentry. Log levels follow Pino's conventions (e.g., 40 for 'error').
+- **`minLevel`**: The minimum log level required for a message to be sent to Sentry. Log levels follow Pino's conventions (e.g., 50 for 'error').
 - **`expectPinoConfig`**: If set to `true`, allows the transport to work with custom `messageKey` or `errorKey` settings in Pino.
 
 
